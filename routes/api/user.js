@@ -1,10 +1,39 @@
 const User=require('../../database/collection/user');
 const express=require('express');
 const empty=require('is-empty');
+const path=require('path');
+const fs=require('fs');
 const sha1=require('sha1');
 const jwt=require('jsonwebtoken');
 const multer=require('multer');
 const router=express.Router();
+//foto
+const storage = multer.diskStorage({
+    destination: function (res, file, cb) {
+        try {
+            fs.statSync('./public/fotos');
+        } catch (e) {
+            fs.mkdirSync('./public/fotos');
+        }
+        cb(null, './public/fotos');
+    },
+    filename:(res, file, cb) => {
+        cb(null, 'IMG-' + Date.now() + path.extname(file.originalname))
+    }
+})
+const fileFilter = (req, file, cb) => {
+    if (file.mimetype === 'image/png' || file.mimetype === 'image/jpeg') {
+        return cb(null, true);
+    }
+    return cb(new Error('Solo se admiten imagenes png y jpg jpeg'));
+}
+const upload = multer({
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 1024 * 1024 * 5
+    }
+}).single('foto')
 //GET
 router.get('/',(req,res)=>{
     User.find({},(err,docs)=>{
@@ -18,18 +47,44 @@ router.get('/',(req,res)=>{
     });
 });
 //POST
-router.post('/', async(req,res)=>{
-    console.log(req.body);
-    req.body.password=sha1 (req.body.password);
-    let ins=new User(req.body);
-    let result=await ins.save();
-    if(!empty(result)){
-        res.json({message:'usuario insertado en la bd'});
-
-    }else{
-        res.json({message:'hubo errores'});
-    }
-
+router.post('/', function (req, res, next) {
+    upload(req, res, (error) => {
+        if(error){
+          return res.status(500).json({
+            detalle: error,
+            "error" : error.message
+    
+          });
+        }else{
+          if (req.file == undefined) {
+                return res.status(400).json({
+                "error" : 'No se recibio la imagen'        
+                });
+            }
+            console.log(req.file);
+            let url = req.file.path.substr(6, req.file.path.length);
+            console.log(url);
+            const datos = {
+                nombre: req.body.nombre,
+                foto: url,
+                email: req.body.email,
+                password: req.body.password
+            };
+var modelMenu = new User(datos);
+            modelMenu.save()
+                .then(result => {
+                    res.json({
+                        message: "Usuario insertado en la bd",
+                        id: result._id
+                    })
+                }).catch(err => {
+                    res.status(500).json({
+                        error: err
+                    })
+                });
+                
+                }
+    })
 });
 //PATCH
 router.patch('/', (req, res) => {
@@ -107,40 +162,6 @@ router.post("/login",(req,res)=>{
     });
 });
 //foto
-router.post("/uploadfoto",(req, res) => {
-    var params = req.query;
-    var id = params.id;
-    var SUPERES = res;
-    User.findOne({_id: id}).exec((err, docs) => {
-      if (err) {
-        res.status(501).json({
-          "msn" : "Problemas con la base de datos"
-        });
-        return;
-      }
-      if (docs != undefined) {
-        upload(req, res, (err) => {
-          if (err) {
-            res.status(500).json({
-              "msn" : "Error al subir la imagen"
-            });
-            return;
-          }
-          var url = req.file.path.replace(/public/g, "");
-  
-          User.update({_id: id}, {$set:{picture:url}}, (err, docs) => {
-            if (err) {
-              res.status(200).json({
-                "msn" : err
-              });
-              return;
-            }
-            res.status(200).json(docs);
-          });
-        });
-      }
-    });
-  });
 
 
 module.exports=router;
