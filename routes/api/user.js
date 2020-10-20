@@ -70,8 +70,8 @@ router.post('/', function (req, res, next) {
                 email: req.body.email,
                 password: req.body.password
             };
-var modelMenu = new User(datos);
-            modelMenu.save()
+var modelUser = new User(datos);
+            modelUser.save()
                 .then(result => {
                     res.json({
                         message: "Usuario insertado en la bd",
