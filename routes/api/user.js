@@ -47,7 +47,8 @@ router.get('/',(req,res)=>{
     });
 });
 //POST
-router.post('/', function (req, res, next) {
+router.post('/',  function (req, res, next) {
+    
     upload(req, res, (error) => {
         if(error){
           return res.status(500).json({
@@ -61,6 +62,7 @@ router.post('/', function (req, res, next) {
                 "error" : 'No se recibio la imagen'        
                 });
             }
+            req.body.password=sha1(req.body.password);
             console.log(req.file);
             let url = req.file.path.substr(6, req.file.path.length);
             console.log(url);
@@ -161,7 +163,4 @@ router.post("/login",(req,res)=>{
 
     });
 });
-//foto
-
-
 module.exports=router;
